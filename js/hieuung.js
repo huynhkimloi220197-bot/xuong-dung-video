@@ -108,7 +108,7 @@ export function veHieu(ctx, kh, t, anhChia) {
   const d = dangChay(kh.hieu, t), hookDangHien = kh.hook && t < (kh.hook.dai || 3);
   if (d.chia) chiaDoi(ctx, d.chia, t - d.chia.t, anhChia?.get(d.chia));
   if (d.tren && !hookDangHien && !(d.chia && anhChia?.get(d.chia))) VE[d.tren.loai](ctx, d.tren, t - d.tren.t);
-  if (d.duoi && !hookDangHien) VE[d.duoi.loai](ctx, d.duoi, t - d.duoi.t);
+  if (d.duoi && !hookDangHien && !(d.chia && d.duoi.loai === 'so')) VE[d.duoi.loai](ctx, d.duoi, t - d.duoi.t);
 }
 
 // tiếng đi kèm từng hiệu ứng

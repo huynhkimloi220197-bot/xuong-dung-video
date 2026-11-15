@@ -196,7 +196,10 @@ async function layAnhChia(kh) {
   const m = new Map();
   for (const h of (kh.hieu || []).filter(h => h.loai === 'chia_doi')) {
     const i = kh.doan.findIndex(s => h.t >= s.t0 && h.t < s.t0 + s.dai); if (i < 0) continue;
-    const cur = kh.doan[i].r, kia = kh.doan.slice(0, i).reverse().find(s => s.r !== cur) || kh.doan.slice(i + 1).find(s => s.r !== cur);
+    const cur = kh.doan[i].r, khop = (a, b) => a && b && (a.includes(b) || b.includes(a));
+    // ưu tiên clip đang chiếu lúc nhãn bên trái (vd "COLOROS 16" → clip Reno16) được giới thiệu
+    const nh = kh.hieu.find(x => x.loai === 'nhan' && x.t < h.t && khop(x.chu, h.trai)), sNh = nh && kh.doan.find(s => nh.t + 0.5 >= s.t0 && nh.t + 0.5 < s.t0 + s.dai);
+    const kia = (sNh && sNh.r !== cur ? sNh : null) || kh.doan.slice(0, i).reverse().find(s => s.r !== cur) || kh.doan.slice(i + 1).find(s => s.r !== cur);
     if (!kia) continue;
     try {
       const w = await kia.r.sink.getCanvas(Math.min(kia.r.dur - 0.05, (kia.a + kia.b) / 2)); if (!w) continue;

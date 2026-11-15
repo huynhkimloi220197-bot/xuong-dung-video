@@ -22,10 +22,18 @@ function ha16(x) { const n = Math.floor(x.length / 3), y = new Float32Array(n); 
 
 // sửa tên riêng hay nghe sai (thêm dần khi gặp)
 const SUA = [
+  [/\b(Op-?op|Ốp-?ốp|Ô ?pô|Ốp ?pô ?pô)\b/gi, 'OPPO'],
+  [/\b(file|fine|phai|fai|find|phải)\s+(?:X\s*|ích\s*)?(\d{1,2})\b/gi, (m, a, n) => 'Find X' + (n.length === 2 && n[0] === '1' && n[1] !== '0' ? n[1] : n)],   // "file 19" → Find X9
+  [/\bColor\s*(Work|Wat|Watt|What|Web|Wap|Wak|Ốt|ô ét|OS)?\s+(\d{1,2})\b/gi, 'ColorOS $2'], [/\bColor ?(Work|Wat|Watt|What)\b/gi, 'ColorOS'],
+  [/\bKenp\b/gi, 'kênh'], [/\b(FI|Fi|Phi|Phí|phá|Phá|Fai)[- ]?X ?(\d+)/g, 'Find X$2'], [/\bColor ?(West|Wes|Quét|Ướt)\b/gi, 'ColorOS'],
+  [/\bgèm\b/gi, 'rèm'], [/\bHình nên\b/gi, 'Hình nền'], [/\bcầm mày\b/gi, 'cầm máy'], [/\btời\b/gi, 'trời'], [/\bxáng\b/gi, 'sáng'], [/\bđang bưa\b/gi, 'đang mưa'], [/\bop ?4 ?(phái|phải|fai)\s*(\d)\b/gi, 'OPPO Find X$2'], [/\b(phái|phải) chính\b/gi, 'Find X9'], [/\bColor ?s ?(\d{1,2})\b/gi, 'ColorOS $1'],
+  [/\b(sẽ|ta|rồi|và|bạn) trọng\b/gi, '$1 chọn'], [/\bthởi tiếp|thời tiếp\b/gi, 'thời tiết'], [/\blà sông\b/gi, 'là xong'], [/\btính (lang|nóng|nang)\b/gi, 'tính năng'],
+  [/\bbị luật\b/gi, 'bình luận'], [/\bchia sạc\b/gi, 'chia sẻ'], [/\bbiểu tường\b/gi, 'biểu tượng'], [/\bviên bản\b/gi, 'phiên bản'], [/\bsạch phẩm\b/gi, 'sản phẩm'], [/\bbiến năng\b/gi, 'tính năng'],
+  [/\bColorOS (6|7)\b/g, 'ColorOS 1$1'],   // "Color Work 7" = ColorOS 17 (bản 6/7 đã cũ)
   [/\b(Renault|Re no|Rê nô|Reino)\s*(\d+)/gi, 'Reno$2'], [/\b(Fire|Phai|Fai|Fight|Phải)\s*X\s*(\d+)/gi, 'Find X$2'],
   [/\b(Ốp ?pô|Óp ?pô|Ốp ?bô|Oppo|ốp pồ)\b/gi, 'OPPO'], [/\b(Color ?OS|Cô ?lơ ?ô ?ét|Colo OS|colorOS)\s*(\d*)/gi, (m, a, n) => 'ColorOS' + (n ? ' ' + n : '')],
   [/\bflag\b/gi, 'Flux'], [/\bbiểu tưởng\b/gi, 'biểu tượng'], [/\bdèm\b/gi, 'rèm'], [/\bA(\d) ?Pro\b/gi, 'A$1 Pro'],
-  [/\bTik ?Tok\b/gi, 'TikTok'], [/\bsub ?scribe\b/gi, ''], [/Ghiền Mì Gõ/gi, ''],
+  [/\bColorOS (6|7)\b/g, 'ColorOS 1$1'], [/\bTik ?Tok\b/gi, 'TikTok'], [/\bsub ?scribe\b/gi, ''], [/Ghiền Mì Gõ/gi, ''],
 ];
 export const suaChu = t => SUA.reduce((s, [a, b]) => s.replace(a, b), t).replace(/\s+/g, ' ').trim();
 const NHAN = /^(OPPO|Find|X\d+|Reno\d*|ColorOS|\d+[\d.,]*%?|AI|Flux|5G|[A-Z]\d+)$/i;

@@ -3,11 +3,12 @@ import { phanTich, lapKeHoach, xuat, anhBia } from './tudong.js';
 import { hieuGopY, MAU_CAU } from './gopy.js';
 import { docAm, db, timNhip } from './audio.js';
 import { datMoHinh } from './nghe.js';
-const PHIEN_BAN = '0.3.1';
+const PHIEN_BAN = '0.3.2';
 const $ = s => document.querySelector(s);
 $('#ban').textContent = 'Phiên bản ' + PHIEN_BAN;
 
 let nhip = null, files = [], kq = new Map(), gop = {}, ban = [], dangXem = -1, nhac = null, huy = { co: false }, banDang = null;
+window.__xd = { get ban() { return ban; } };   // để soát lỗi
 const tienDo = (m, k) => { $('#tienChu').textContent = m; if (k != null) $('#thanh').style.width = (k * 100).toFixed(1) + '%'; };
 const tuNhien = (a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true });
 

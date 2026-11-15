@@ -24,7 +24,10 @@ export function timMay(cau) {   // theo thứ tự xuất hiện trong câu, kh�
 // tách câu theo dấu câu hoặc khoảng nghỉ > 0.6s
 export function tachCau(chu) {
   const cau = []; let cur = [];
+  const MOC = /^(đầu tiên|tiếp theo|và tiếp theo|sau đó|cuối cùng|bấm vào|rồi chọn|bạn thấy|các bạn thấy|hãy follow|nhớ follow)/i;
   chu.forEach((w, i) => {
+    // câu dài không dấu chấm: tách trước các từ mốc (bước, kêu gọi)
+    if (cur.length >= 3 && MOC.test(chu.slice(i, i + 3).map(x => x.chu).join(' '))) { cau.push(cur); cur = []; }
     cur.push(w); const nghi = chu[i + 1] ? chu[i + 1].us - w.ue : 9;
     if (/[.?!]$/.test(w.chu) || nghi > 0.6) { cau.push(cur); cur = []; }
   });
@@ -40,12 +43,13 @@ export function hook(cau0, may) {
   let m = c.match(/sau\s+(\d+|một|hai|ba)\s+(năm|tháng|tuần|ngày)/i); if (m) return { nho, lon: `SAU ${m[1].toUpperCase()} ${m[2].toUpperCase()}…` }; // 2. thời gian dùng thật
   m = c.match(/(đừng|sai lầm|cẩn thận|coi chừng)\s+([^,.!?]{0,24})/i); if (m) return { nho, lon: `${m[1]} ${m[2]}`.trim().toUpperCase() + '!' }; // 3. cảnh báo
   m = c.match(/(\d+[.,]?\d*)\s*(mah|w|hz|mp|gb|triệu|giờ|%)/i); if (m) return { nho, lon: `${m[1]}${m[2].toUpperCase()}` };                // 4. con số gây sốc
+  if (/(có gì mới|tính năng (gì )?mới|có gì hay|điểm gì mới)/i.test(c)) return may.length >= 2 ? { nho: `${may[0]} × ${may[1]}`, lon: 'CÓ GÌ MỚI?' } : { nho: '', lon: `${may[0] || 'BẢN MỚI'} CÓ GÌ MỚI?` };  // 4b. tính năng mới
   if (/(so sánh|vs|hay là|hơn)/i.test(c) && may.length >= 2) return { nho: '', lon: `${may[0]} VS ${may[1]}` };                         // 5. đối đầu
-  if (/(mẹo|cách|hướng dẫn|bí kíp)/i.test(c)) return { nho, lon: 'MẸO HAY ÍT AI BIẾT' };                                               // 6. mẹo
+  if (/(mẹo|bí kíp|cách để|thủ thuật)/i.test(c)) return { nho, lon: 'MẸO HAY ÍT AI BIẾT' };                                               // 6. mẹo
   return may.length ? { nho: '', lon: `${may[0]} CÓ GÌ HAY?` } : null;                                                                      // 7. mặc định theo máy
 }
 
-const BUOC = /^(đầu tiên|tiếp theo|sau đó|cuối cùng|bước (\d+|một|hai|ba))/i;
+const BUOC = /^(và )?(để [^,]{0,30} )?(đầu tiên|tiếp theo|sau đó|cuối cùng|bước (\d+|một|hai|ba)|bấm vào|rồi chọn)/i;
 const DONG_TU = /\b(vào|chọn|bấm|nhấn|mở|kéo|bật|tắt|gạt)\s+(phần\s+|mục\s+|vào\s+)?/i;
 
 // kh: kế hoạch từ lapKeHoach (doan, chu, tong). Trả danh sách hiệu ứng [{loai, t, dai, ...}]
@@ -64,13 +68,16 @@ export function daoDien(kh) {
     if (BUOC.test(lc) || (soBuoc > 0 && DONG_TU.test(lc))) {
       soBuoc++; const m = lc.match(DONG_TU); let ten = '';
       if (m) { const ws = sach(lc.slice(lc.search(DONG_TU) + m[0].length)).split(/\s+/), k = ws.findIndex((w, j) => j && /^(và|rồi|là|để|thì|nha|nhé|của|xong)$/i.test(w)); ten = ws.slice(0, Math.min(4, k > 0 ? k : 4)).join(' ').toUpperCase(); }
-      hieu.push({ loai: 'buoc', t: c.t0, dai: c.t1 - c.t0 + 0.2, so: soBuoc, ten }); return;
+      hieu.push({ loai: 'buoc', t: c.t0, dai: Math.min(4, c.t1 - c.t0 + 0.2), so: soBuoc, ten });
+      if (/là xong|xong rồi/i.test(lc)) hieu.push({ loai: 'xong', t: c.t1 - 0.3, dai: 1.4 });
+      return;
     }
     if (/là xong|xong rồi|vậy là xong/i.test(lc) && soBuoc) hieu.push({ loai: 'xong', t: c.t1 - 0.3, dai: 1.4 });
     // 3) so sánh 2 bên → chia đôi
-    if (/(một bên|bên này|so với|còn bên|bản cũ|bản mới)/i.test(lc) && (kh.doan || []).length > 1) hieu.push({ loai: 'chia_doi', t: c.t0, dai: c.t1 - c.t0, ...(may.length > 1 ? { trai: may[0], phai: may[1] } : may.length ? { trai: mayTruoc && mayTruoc !== may[0] ? mayTruoc : 'TRƯỚC', phai: may[0] } : { trai: dsNhan.at(-2) || 'TRƯỚC', phai: dsNhan.at(-1) || 'SAU' }) });
+    const chiaTruoc = hieu.findLast(h => h.loai === 'chia_doi');
+    if (/(một bên|bên này|so với|còn bên|bản cũ|bản mới)/i.test(lc) && (kh.doan || []).length > 1 && !(chiaTruoc && c.t0 - (chiaTruoc.t + chiaTruoc.dai) < 8)) hieu.push({ loai: 'chia_doi', t: c.t0, dai: Math.min(6, Math.max(3, c.t1 - c.t0)), ...(may.length > 1 ? { trai: may[0], phai: may[1] } : may.length ? { trai: mayTruoc && mayTruoc !== may[0] ? mayTruoc : 'TRƯỚC', phai: may[0] } : { trai: dsNhan.at(-2) || 'TRƯỚC', phai: dsNhan.at(-1) || 'SAU' }) });
     // 4) nhãn máy khi nhắc tới máy mới
-    else if (may.length) { const nhan = may.slice(0, 2).join(' · '); if (nhan !== nhanTruoc) { hieu.push({ loai: 'nhan', t: c.t0, dai: Math.max(2.5, c.t1 - c.t0), chu: nhan }); nhanTruoc = nhan; dsNhan.push(nhan); } }
+    else if (may.length) { const nhan = may.slice(0, 2).join(' · '); if (nhan !== nhanTruoc) { hieu.push({ loai: 'nhan', t: c.t0, dai: Math.min(3.5, Math.max(2.5, c.t1 - c.t0)), chu: nhan }); nhanTruoc = nhan; dsNhan.push(nhan); } }
     // 5) con số + đơn vị → số phát sáng; "giá" → thẻ giá
     c.ws.forEach((w, j) => {
       const s = sach(w.chu), s2 = c.ws[j + 1] ? sach(c.ws[j + 1].chu) : '';
@@ -84,6 +91,6 @@ export function daoDien(kh) {
   });
   // 7) câu kêu gọi cuối → nút FOLLOW · BÌNH LUẬN
   const cuoi = cau.findLast(c => /(follow|theo dõi|bình luận|comment|chia sẻ|đăng ký)/i.test(c.chu));
-  if (cuoi) hieu.push({ loai: 'cta', t: cuoi.t0, dai: Math.max(2.5, (kh.tong || cuoi.t1) - cuoi.t0) });
+  if (cuoi && cuoi.t0 > 0.6 * (kh.tong || cuoi.t1)) hieu.push({ loai: 'cta', t: cuoi.t0, dai: Math.min(4, Math.max(2.5, (kh.tong || cuoi.t1) - cuoi.t0)) });
   return hieu;
 }
