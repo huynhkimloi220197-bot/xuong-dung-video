@@ -1,0 +1,50 @@
+@font-face { font-family: 'Anton'; src: url(../fonts/Anton-Regular.ttf); }
+@font-face { font-family: 'BVX'; src: url(../fonts/BeVietnamPro-ExtraBold.ttf); font-weight: 800; }
+@font-face { font-family: 'BVS'; src: url(../fonts/BeVietnamPro-SemiBold.ttf); }
+:root { --nen: #0f1115; --the: #181b22; --vien: #2a2f3a; --chu: #e9ecf2; --mo: #9aa3b2; --troi: #6ebeff; --vang: #ffc83d; --do: #fe2c55; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--nen); color: var(--chu); font: 15px/1.45 'BVS', system-ui, sans-serif; }
+header { padding: 14px 20px; border-bottom: 1px solid var(--vien); display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+.logo { font: 22px 'Anton'; letter-spacing: .5px; }
+.phu, .nho { color: var(--mo); font-size: 13px; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; padding: 18px 20px 60px; max-width: 1400px; margin: auto; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } .cot-phai { order: -1; } }
+.cot-phai { position: sticky; top: 12px; align-self: start; }
+.the { background: var(--the); border: 1px solid var(--vien); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
+h2 { margin: 0 0 12px; font: 17px 'BVX'; display: flex; align-items: center; gap: 10px; }
+h2 small { font: 13px 'BVS'; color: var(--mo); }
+.so { background: var(--vang); color: #111; width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 14px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--mo); margin-bottom: 8px; }
+label.radio { flex-direction: row; align-items: center; color: var(--chu); }
+input, select, textarea, button { font: inherit; color: var(--chu); background: #10131a; border: 1px solid var(--vien); border-radius: 8px; padding: 7px 9px; }
+input[type=file] { padding: 5px; }
+input[type=number] { width: 78px; }
+textarea { resize: vertical; width: 100%; }
+button { cursor: pointer; background: #222838; }
+button:hover { border-color: var(--troi); }
+button.chinh { background: var(--do); border-color: var(--do); font-family: 'BVX'; padding: 10px 22px; }
+button.phu-btn { background: transparent; }
+.luoi2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 12px; }
+.hang { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.canh { border: 1px solid var(--vien); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+.canh .dau { display: flex; gap: 8px; align-items: center; padding: 8px 10px; background: #1e2230; flex-wrap: wrap; }
+.canh .dau .ten { min-width: 70px; }
+.canh .dau .gian { margin-left: auto; color: var(--mo); font-size: 13px; }
+.canh .dau button { padding: 4px 9px; }
+.canh .than { padding: 10px 12px; }
+.clip { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; padding: 8px; border: 1px dashed var(--vien); border-radius: 10px; margin-bottom: 8px; }
+.clip .ten-file { flex: 1 1 100%; font-size: 13px; color: var(--troi); word-break: break-all; }
+.clip label { margin: 0; }
+.clip button { padding: 5px 9px; font-size: 13px; }
+.nut-file { display: inline-block; padding: 7px 12px; border: 1px dashed var(--troi); border-radius: 8px; color: var(--troi); cursor: pointer; margin-bottom: 10px; }
+.khung-xem { position: relative; width: 100%; max-width: 340px; margin: 8px auto; aspect-ratio: 9/16; }
+#xem { width: 100%; height: 100%; border-radius: 12px; background: #000; display: block; cursor: crosshair; }
+#vungTiktok { position: absolute; left: 0; right: 0; bottom: 0; height: 18.75%; border-top: 1px dashed rgba(254,44,85,.6); pointer-events: none; border-radius: 0 0 12px 12px; background: linear-gradient(transparent, rgba(254,44,85,.08)); }
+input[type=range] { width: 100%; }
+.tien { height: 10px; background: #10131a; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+#thanh { height: 100%; width: 0; background: linear-gradient(90deg, var(--troi), var(--vang)); transition: width .2s; }
+.goi-y { background: #10131a; border: 1px dashed var(--vien); border-radius: 8px; padding: 8px; font-size: 13px; margin-bottom: 8px; white-space: pre-wrap; }
+.canh-bao { color: var(--vang); }
+.loi { color: var(--do); }
+#ketQua a { display: inline-block; margin: 8px 10px 0 0; color: var(--troi); }
+#ketQua video { width: 100%; max-width: 300px; border-radius: 10px; margin-top: 8px; }

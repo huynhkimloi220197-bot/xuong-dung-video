@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xưởng Dựng Video</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header>
+  <div class="logo">🎬 Xưởng Dựng Video</div>
+  <div class="phu">Dựng ngay trên Chrome của bạn · clip không gửi đi đâu · theo quy chuẩn kênh</div>
+</header>
+<main>
+  <div class="cot-trai">
+    <section class="the" id="b1">
+      <h2><span class="so">1</span> Kênh & thẻ mở đầu</h2>
+      <div class="luoi2">
+        <label>Tên kênh <input data-k="kenh.ten"></label>
+        <label>@ TikTok <input data-k="kenh.at"></label>
+        <label>Dòng nhỏ (tên máy) <input data-k="hook_nho" placeholder="FIND X9 × COLOROS 17"></label>
+        <label>Câu hook (hiện giây 0) <input data-k="hook_lon" placeholder="CÓ GÌ MỚI?"></label>
+        <label>Nhãn vàng <input data-k="phan" placeholder="PHẦN 1"></label>
+        <label>Hashtag máy <input data-k="may" placeholder="#oppofindx9"></label>
+        <label>Ảnh bìa — dòng lớn 1 <input data-k="bia_lon_1" placeholder="HÌNH NỀN"></label>
+        <label>Ảnh bìa — dòng lớn 2 <input data-k="bia_lon_2" placeholder="BIẾT THỜI TIẾT?"></label>
+        <label>Hashtag chủ đề <input data-k="chu_de" placeholder="#ColorOS17"></label>
+        <label>Ảnh bìa lấy ở giây (clip mở đầu) <input data-k="bia_giay" type="number" step="0.1" placeholder="1.0"></label>
+        <label>Nhạc nền (thương mại, tuỳ chọn) <input type="file" id="nhacFile" accept="audio/*"></label>
+      </div>
+    </section>
+
+    <section class="the" id="b2">
+      <h2><span class="so">2</span> Các cảnh <small>kéo clip & file giọng vào từng cảnh</small></h2>
+      <div id="dsCanh"></div>
+      <div class="hang">
+        <select id="loaiMoi"></select><button id="themCanh">+ Thêm cảnh</button>
+        <button id="mauMoi" class="phu-btn">Làm lại từ mẫu</button>
+      </div>
+    </section>
+
+    <section class="the" id="b4">
+      <h2><span class="so">4</span> Xuất video</h2>
+      <label>Caption <textarea data-k="caption" rows="2" placeholder="Câu kể ngắn, giọng tâm sự :))"></textarea></label>
+      <div class="goi-y" id="captionDu"></div>
+      <div class="hang">
+        <label class="radio"><input type="radio" name="ban" value="goc" checked> Bản gốc (nét nhất, anh em tự kéo lên TikTok)</label>
+        <label class="radio"><input type="radio" name="ban" value="nhe"> Bản nhẹ &lt; 10MB</label>
+      </div>
+      <div class="hang"><button id="dung" class="chinh">Dựng video</button><button id="huy" class="phu-btn" hidden>Huỷ</button><button id="bia" class="phu-btn">Tải ảnh bìa</button></div>
+      <div class="tien"><div id="thanh"></div></div><div id="tienChu" class="nho"></div>
+      <div id="ketQua"></div>
+    </section>
+  </div>
+
+  <aside class="cot-phai">
+    <section class="the" id="b3">
+      <h2><span class="so">3</span> Xem trước</h2>
+      <div class="hang"><select id="xemCanh"></select><button id="tinh" class="phu-btn">Tính thời lượng</button></div>
+      <div class="khung-xem"><canvas id="xem" width="1080" height="1920"></canvas><div id="vungTiktok" title="vùng nút & caption TikTok"></div></div>
+      <input type="range" id="xemU" min="0" max="5" step="0.05" value="0.5">
+      <div id="cheDo" class="nho"></div>
+      <div id="tongQuan" class="nho"></div>
+    </section>
+  </aside>
+</main>
+<template id="tplCanh">
+  <div class="canh">
+    <div class="dau">
+      <b class="ten"></b>
+      <select class="loai"></select>
+      <select class="chuyen" title="Chuyển cảnh vào"></select>
+      <span class="gian"></span>
+      <button class="len" title="Lên">↑</button><button class="xuong" title="Xuống">↓</button><button class="xoa" title="Xoá">✕</button>
+    </div>
+    <div class="than">
+      <div class="luoi2 truong"></div>
+      <div class="hang am-hang">
+        <label>Tiếng <select class="am"><option value="clip">Tiếng trong clip (quay mặt)</option><option value="giong">File giọng thu riêng</option><option value="khong">Không tiếng</option></select></label>
+        <label class="giong-o">File giọng <input type="file" class="giong" accept="audio/*,video/*"></label><span class="giong-ten nho"></span>
+      </div>
+      <div class="clips"></div>
+      <label class="nut-file">+ Thêm clip <input type="file" class="themClip" accept="video/*" multiple hidden></label>
+      <label>Phụ đề (gõ lại lời nói, *từ khoá* sẽ tô xanh) <textarea class="phude" rows="2"></textarea></label>
+    </div>
+  </div>
+</template>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
