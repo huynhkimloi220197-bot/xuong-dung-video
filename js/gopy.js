@@ -5,6 +5,17 @@ const giay = s => { const m = String(s).match(/(\d+)[:h'](\d+)/); return m ? +m[
 const MAU = { vàng: [255, 200, 61], đỏ: [254, 44, 85], xanh: [110, 190, 255], 'xanh lá': [60, 220, 120], trắng: [255, 255, 255], hồng: [255, 90, 220], cam: [255, 140, 40] };
 
 const LUAT = [
+  // hiệu ứng tự động (bộ đạo diễn)
+  [/(bỏ|tắt|xoá|xóa) hiệu ứng (ở |lúc |tại )?(giây )?([\d:.,h']+)/i, (g, m) => { (g.boLuc ||= []).push(giay(m[4])); return `Bỏ hiệu ứng ở giây ${giay(m[4])}`; }],
+  [/(bật|thêm|mở) (lại )?hiệu ứng( tự động)?/i, (g) => { g.tatDaoDien = false; return 'Bật lại hiệu ứng tự động'; }],
+  [/(tắt|bỏ|không cần) (hết |toàn bộ |mọi )?hiệu ứng/i, (g) => { g.tatDaoDien = true; return 'Tắt hiệu ứng tự động (chỉ giữ cắt, phụ đề, chuyển cảnh)'; }],
+  [/chia đôi( màn hình)?( ["“'](.+?)["”'] ?(và|với|vs) ?["“'](.+?)["”'])? ?(từ )?(giây )?([\d:.,h']+) ?(s|giây)? ?(đến|tới|-|→) ?(giây )?([\d:.,h']+)/i, (g, m) => { const a = giay(m[8]), b = giay(m[12]); (g.themHieu ||= []).push({ loai: 'chia_doi', t: a, dai: Math.max(1, b - a), trai: (m[3] || 'TRƯỚC').toUpperCase(), phai: (m[5] || 'SAU').toUpperCase() }); return `Chia đôi màn hình ${a}s → ${b}s`; }],
+  [/(thẻ giá|giá) ["“'](.+?)["”'] ?(ở|tại|lúc)? ?(giây )?([\d:.,h']+)/i, (g, m) => { (g.themHieu ||= []).push({ loai: 'gia', t: giay(m[5]), dai: 2.2, chu: m[2].toUpperCase() }); return `Thẻ giá "${m[2].toUpperCase()}" ở giây ${giay(m[5])}`; }],
+  [/(nhãn|tên máy) ["“'](.+?)["”'] ?(ở|tại|lúc)? ?(giây )?([\d:.,h']+)/i, (g, m) => { (g.themHieu ||= []).push({ loai: 'nhan', t: giay(m[5]), dai: 2.5, chu: m[2].toUpperCase() }); return `Nhãn "${m[2].toUpperCase()}" ở giây ${giay(m[5])}`; }],
+  [/(con số|số) ["“'](.+?)["”'] ?(ở|tại|lúc)? ?(giây )?([\d:.,h']+)/i, (g, m) => { (g.themHieu ||= []).push({ loai: 'so', t: giay(m[5]), dai: 1.8, chu: m[2].toUpperCase() }); return `Số phát sáng "${m[2].toUpperCase()}" ở giây ${giay(m[5])}`; }],
+  [/bước (\d+) ["“'](.+?)["”'] ?(ở|tại|lúc)? ?(giây )?([\d:.,h']+)/i, (g, m) => { (g.themHieu ||= []).push({ loai: 'buoc', t: giay(m[5]), dai: 2.5, so: +m[1], ten: m[2].toUpperCase() }); return `Nhãn bước ${m[1]} ở giây ${giay(m[5])}`; }],
+  [/(nút )?follow (ở|tại|lúc|từ) (giây )?([\d:.,h']+)/i, (g, m) => { (g.themHieu ||= []).push({ loai: 'cta', t: giay(m[4]), dai: 3 }); return `Nút follow ở giây ${giay(m[4])}`; }],
+  [/(bỏ|tắt|không cần) (nhãn máy|nhãn|thẻ giá|giá|số phát sáng|số|bước|chia đôi|nút follow|follow|zoom tự động)/i, (g, m) => { const k = { 'nhãn máy': 'nhan', nhãn: 'nhan', 'thẻ giá': 'gia', giá: 'gia', 'số phát sáng': 'so', số: 'so', bước: 'buoc', 'chia đôi': 'chia_doi', 'nút follow': 'cta', follow: 'cta', 'zoom tự động': 'zoom' }[m[2].toLowerCase()]; (g.boHieu ||= []).push(k); return `Bỏ ${m[2].toLowerCase()} tự động`; }],
   [/(nhanh|gọn|dồn) ?(hơn|lên|lại)?/i, (g) => { g.nhanh = Math.min(2.5, (g.nhanh || 1) * 1.35); return 'Rút ngắn khoảng lặng, cắt nhịp nhanh hơn'; }],
   [/(chậm|thong thả|từ từ) ?(hơn|lại)?/i, (g) => { g.nhanh = Math.max(0.5, (g.nhanh || 1) / 1.35); return 'Giữ nhịp chậm hơn, để thở hơn'; }],
   [/(bỏ|cắt|xoá|xóa) (đoạn |khúc )?(từ )?(giây )?([\d:.,h']+) ?(s|giây)? ?(đến|tới|-|→) ?(giây )?([\d:.,h']+)/i, (g, m) => { (g.bo ||= []).push([giay(m[5]), giay(m[9])]); return `Bỏ đoạn ${giay(m[5])}s → ${giay(m[9])}s`; }],
@@ -27,7 +38,8 @@ const LUAT = [
 ];
 
 export const MAU_CAU = ['nhanh hơn', 'bỏ đoạn từ giây 10 đến 15', 'thêm chữ "GIÁ CHỈ 5 TRIỆU" ở giây 3', 'hook là "CÓ GÌ MỚI?"', 'sửa "Renault" thành "Reno"',
-  'chữ to hơn', 'không cần phụ đề', 'sáng hơn', 'zoom vào giây 7', 'bỏ nhạc', 'đổi kiểu chuyển cảnh', 'ảnh bìa ở giây 2'];
+  'chữ to hơn', 'không cần phụ đề', 'sáng hơn', 'zoom vào giây 7', 'bỏ nhạc', 'đổi kiểu chuyển cảnh', 'ảnh bìa ở giây 2',
+  'chia đôi từ giây 8 đến 14', 'thẻ giá "15 TRIỆU" ở giây 20', 'bỏ hiệu ứng ở giây 12', 'tắt hiệu ứng tự động'];
 
 export function hieuGopY(cau, gopCu = {}) {
   const g = structuredClone(gopCu), hieu = [], khongHieu = [];

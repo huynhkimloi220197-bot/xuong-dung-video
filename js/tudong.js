@@ -5,6 +5,8 @@ import { CHUAN } from './config.js';
 import * as E from './effects.js';
 import { docAm, timGiu, ghep, canGiong, tronAm, sfx, db, SR, dbKhung } from './audio.js';
 import { nghe, gomCum } from './nghe.js';
+import { daoDien } from './daodien.js';
+import { veHieu, TIENG } from './hieuung.js';
 
 // ---------- mở & phân tích 1 file ----------
 const _cache = new Map();
@@ -96,9 +98,18 @@ export function lapKeHoach(ds, cd) {
   let tong = t + 0.05;
   // góp ý: sửa chữ, bỏ đoạn, chữ chèn, hook
   for (const [a, b] of g.sua || []) for (const w of chu) if (w.chu.toLowerCase().replace(/[,.?!]/g, '') === a.toLowerCase()) w.chu = w.chu.replace(new RegExp(a, 'i'), b);
-  const kh = { doan, am, chu: g.phuDe === false ? [] : chu, cum: [], tong, chen: g.chen || [], hook: g.hook || null, coChu: g.coChu ?? 1, nhac: g.nhac ?? 1, che: g.che || [], zoomVao: g.zoomVao || [] };
+  const kh = { doan, am, chu, cum: [], tong, chen: g.chen || [], hook: g.hook || null, coChu: g.coChu ?? 1, nhac: g.nhac ?? 1, che: g.che || [], zoomVao: g.zoomVao || [] };
   // bỏ đoạn (theo giờ video): dời mọi thứ phía sau lên
   for (const [a, b] of (g.bo || []).slice().sort((x, y) => y[0] - x[0])) boDoan(kh, a, b);
+  // BỘ ĐẠO DIỄN: đọc lời nói → tự đặt hook, nhãn máy, chia đôi, bước, số, giá, follow (góp ý có thể bỏ/thêm)
+  let hieu = g.tatDaoDien ? [] : daoDien(kh);
+  hieu = hieu.filter(h => !(g.boHieu || []).includes(h.loai));
+  for (const n of g.boLuc || []) hieu = hieu.filter(h => h.loai === 'hook' || !(n >= h.t - 0.3 && n < h.t + h.dai + 0.3));
+  hieu.push(...(g.themHieu || []));
+  const hk = hieu.find(h => h.loai === 'hook'); if (!('hook' in g) && hk) kh.hook = { nho: hk.nho, lon: hk.lon, dai: hk.dai, tuDong: true };
+  kh.zoomVao = [...kh.zoomVao, ...hieu.filter(h => h.loai === 'zoom').map(h => ({ t: h.t }))];
+  kh.hieu = hieu.filter(h => h.loai !== 'hook' && h.loai !== 'zoom').sort((a, b) => a.t - b.t);
+  kh.loi = kh.chu; if (g.phuDe === false) kh.chu = [];
   kh.cum = gomCum(kh.chu); return kh;
 }
 function boDoan(kh, a, b) {
@@ -133,9 +144,10 @@ function veNen(ctx, src, s, u, kh) {
   ctx.setTransform(z, 0, 0, z, W / 2 * (1 - z), H * 0.45 * (1 - z)); ctx.drawImage(src, 0, 0, W, H); ctx.restore();
 }
 function cumLuc(cum, t) { for (let i = 0; i < cum.length; i++) { const dau = cum[i][0].us - 0.08, cuoi = i + 1 < cum.length ? Math.min(cum[i + 1][0].us - 0.08, cum[i].at(-1).ue + 0.6) : cum[i].at(-1).ue + 0.5; if (t >= dau && t < cuoi) return cum[i]; } return null; }
-export function veKhung(ctx, kh, s, u, src, truocAnh) {
+export function veKhung(ctx, kh, s, u, src, truocAnh, anhChia) {
   const t = s.t0 + u; veNen(ctx, src, s, u, kh);
   for (const r of kh.che) { if (t < r.t0 || t > r.t1) continue; ctx.save(); ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 18); ctx.clip(); ctx.filter = 'blur(24px)'; ctx.drawImage(ctx.canvas, r.x - 40, r.y - 40, r.w + 80, r.h + 80, r.x - 40, r.y - 40, r.w + 80, r.h + 80); ctx.restore(); }
+  veHieu(ctx, kh, t, anhChia);
   if (kh.hook && t < (kh.hook.dai || 3)) E.theHook(ctx, kh.hook.nho || '', kh.hook.lon, 1 + 0.04 * Math.sin(Math.min(t, 1.2) * 9) * Math.max(0, 1 - t / 1.2));
   for (const c of kh.chen) if (t >= c.t && t < c.t + (c.dai || 2.5)) {
     const k = E.nay((t - c.t) / 0.3), px = E.vuaChu(ctx, c.chu, 'Anton', 120 * kh.coChu, 960);
@@ -157,6 +169,22 @@ export async function xemKhung(ctx, kh, t) {
   ctx.clearRect(0, 0, W, H); veKhung(ctx, kh, s, u, w?.canvas || null, null);
 }
 
+// chia đôi: lấy 1 khung của clip KHÁC (clip trước đó, không có thì clip sau) để đặt nửa trên
+async function layAnhChia(kh) {
+  const m = new Map();
+  for (const h of (kh.hieu || []).filter(h => h.loai === 'chia_doi')) {
+    const i = kh.doan.findIndex(s => h.t >= s.t0 && h.t < s.t0 + s.dai); if (i < 0) continue;
+    const cur = kh.doan[i].r, kia = kh.doan.slice(0, i).reverse().find(s => s.r !== cur) || kh.doan.slice(i + 1).find(s => s.r !== cur);
+    if (!kia) continue;
+    try {
+      const w = await kia.r.sink.getCanvas(Math.min(kia.r.dur - 0.05, (kia.a + kia.b) / 2)); if (!w) continue;
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const cc = c.getContext('2d'), mm = kia.r.mau || { sang: 1, tuong: 1, bao: 1 };
+      cc.filter = `brightness(${mm.sang * (kh.mau || 1)}) contrast(${mm.tuong}) saturate(${mm.bao})`; cc.drawImage(w.canvas, 0, 0, W, H); m.set(h, c);
+    } catch (e) { console.warn('chia đôi', e); }
+  }
+  return m;
+}
+
 // ---------- dựng & xuất ----------
 export async function xuat(kh, { nhe = false, khongNhac = false, nhac = null, cao = false, bao = () => {}, huy = { co: false } } = {}) {
   const tong = kh.tong, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
@@ -167,6 +195,7 @@ export async function xuat(kh, { nhe = false, khongNhac = false, nhac = null, ca
   const as = new AudioBufferSource({ codec, bitrate: 192_000 }); output.addAudioTrack(as); await output.start();
   const anh = document.createElement('canvas'); anh.width = W; anh.height = H; const actx = anh.getContext('2d');
   const tongF = Math.round(tong * FPS); let f = 0;
+  const anhChia = await layAnhChia(kh);
   for (const [i, s] of kh.doan.entries()) {
     const f1 = Math.min(tongF, Math.round((s.t0 + s.dai) * FPS)), ts = [];
     for (let k = f; k < f1; k++) ts.push(Math.min(s.r.dur - 0.05, s.a + (k / FPS - s.t0) * s.toc));
@@ -174,7 +203,7 @@ export async function xuat(kh, { nhe = false, khongNhac = false, nhac = null, ca
     for (; f < f1; f++) {
       if (huy.co) throw new Error('Đã huỷ');
       const r = await it.next(); if (!r.done && r.value) last = r.value.canvas;
-      veKhung(ctx, kh, s, f / FPS - s.t0, last, anh); await vs.add(f / FPS, 1 / FPS);
+      veKhung(ctx, kh, s, f / FPS - s.t0, last, anh, anhChia); await vs.add(f / FPS, 1 / FPS);
       if (f % 15 === 0) bao(`Dựng hình ${Math.round(f / tongF * 100)}%`, f / tongF);
     }
     await it.return?.(); actx.drawImage(cv, 0, 0);
@@ -184,6 +213,7 @@ export async function xuat(kh, { nhe = false, khongNhac = false, nhac = null, ca
   const pk = x => 1 / (x.reduce((m, v) => Math.max(m, Math.abs(v)), 0) + 1e-9);
   for (const s of kh.doan) if (s.chuyen) { const v = await sfx(s.chuyen === 'chop_mat' ? 'pop' : 'vut_zoom'); tr.push({ x: v, t: s.t0 - 0.1, gain: pk(v) * db(-22) }); }
   for (const c of kh.chen) { const v = await sfx('pop'); tr.push({ x: v, t: c.t, gain: pk(v) * db(-18) }); }
+  for (const h of kh.hieu || []) { const [ten, d] = TIENG[h.loai] || []; if (!ten) continue; try { const v = await sfx(ten); tr.push({ x: v, t: h.t, gain: pk(v) * db(d) }); } catch { } }
   await as.add(tronAm(tong, tr, khongNhac ? null : nhac));
   await output.finalize(); bao('Xong', 1);
   return new Blob([output.target.buffer], { type: 'video/mp4' });
@@ -191,7 +221,7 @@ export async function xuat(kh, { nhe = false, khongNhac = false, nhac = null, ca
 
 export async function anhBia(kh, t = 0.5, chu = null) {
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
-  await xemKhung(ctx, { ...kh, cum: [], chen: [], hook: null }, t);
+  await xemKhung(ctx, { ...kh, cum: [], chen: [], hook: null, hieu: [] }, t);
   if (chu?.lon) { E.theHook(ctx, chu.nho || '', chu.lon, 1, [90, 300, 990, 720], chu.lon2 || null); }
   return await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
 }

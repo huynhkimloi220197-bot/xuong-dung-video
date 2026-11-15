@@ -3,7 +3,7 @@ import { phanTich, lapKeHoach, xuat, anhBia } from './tudong.js';
 import { hieuGopY, MAU_CAU } from './gopy.js';
 import { docAm, db } from './audio.js';
 import { datMoHinh } from './nghe.js';
-const PHIEN_BAN = '0.2.0';
+const PHIEN_BAN = '0.3.0';
 const $ = s => document.querySelector(s);
 $('#ban').textContent = 'Phiên bản ' + PHIEN_BAN;
 
@@ -118,12 +118,12 @@ const tenGoc = () => (files[0]?.name || 'video').replace(/\.[^.]+$/, '');
 $('#taiMp4').onclick = () => tai(ban[dangXem].blob, tenGoc() + '_DUNG.mp4');
 $('#taiNhe').onclick = async () => { tienDo('Đang xuất bản nhẹ…'); tai(await xuat(ban[dangXem].kh, { nhe: true, nhac: nhacDung(), bao: tienDo, huy }), tenGoc() + '_DANG.mp4'); };
 $('#taiKhongNhac').onclick = async () => { tienDo('Đang xuất bản không nhạc…'); tai(await xuat(ban[dangXem].kh, { khongNhac: true, bao: tienDo, huy }), tenGoc() + '_KHONG_NHAC.mp4'); };
-$('#taiBia').onclick = async () => { const b = ban[dangXem]; tai(await anhBia(b.kh, b.gop.biaT ?? 0.5, b.gop.hook ? { nho: b.gop.hook.nho, lon: b.gop.hook.lon } : null), tenGoc() + '_ANH_BIA.jpg'); };
+$('#taiBia').onclick = async () => { const b = ban[dangXem]; const hk = b.kh.hook; tai(await anhBia(b.kh, b.gop.biaT ?? 0.5, hk ? { nho: hk.nho, lon: hk.lon } : null), tenGoc() + '_ANH_BIA.jpg'); };
 
 // ---------- caption gợi ý ----------
 const TAG = [[/find ?x(\d+)/i, m => '#oppofindx' + m[1]], [/reno ?(\d+)/i, m => '#reno' + m[1]], [/coloros ?(\d+)/i, m => '#coloros' + m[1]], [/a(\d) ?pro/i, m => '#oppoa' + m[1] + 'pro']];
 function veCaption(kh) {
-  const all = kh.chu.map(w => w.chu).join(' '), cau = (all.match(/^.*?[.?!](\s|$)/) || [all.split(' ').slice(0, 14).join(' ')])[0].trim();
+  const all = (kh.loi || kh.chu).map(w => w.chu).join(' '), cau = (all.match(/^.*?[.?!](\s|$)/) || [all.split(' ').slice(0, 14).join(' ')])[0].trim();
   const tags = ['#xaykenhtiktok', '#oppo']; for (const [re, f] of TAG) { const m = all.match(re); if (m && !tags.includes(f(m))) tags.push(f(m)); }
   const el = $('#caption'); el.classList.toggle('an', !cau); el.textContent = `Caption gợi ý (bấm để chép):\n${cau} ${tags.join(' ')}`;
   el.onclick = () => navigator.clipboard?.writeText(`${cau} ${tags.join(' ')}`);
