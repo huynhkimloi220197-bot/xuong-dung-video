@@ -48,3 +48,5 @@ input[type=range] { width: 100%; }
 .loi { color: var(--do); }
 #ketQua a { display: inline-block; margin: 8px 10px 0 0; color: var(--troi); }
 #ketQua video { width: 100%; max-width: 300px; border-radius: 10px; margin-top: 8px; }
+.an-nhe { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.nut-file { position: relative; }
