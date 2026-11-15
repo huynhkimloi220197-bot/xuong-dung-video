@@ -1,0 +1,55 @@
+@font-face { font-family: 'Anton'; src: url(../fonts/Anton-Regular.ttf); }
+@font-face { font-family: 'BVX'; src: url(../fonts/BeVietnamPro-ExtraBold.ttf); font-weight: 800; }
+@font-face { font-family: 'BVS'; src: url(../fonts/BeVietnamPro-SemiBold.ttf); }
+:root { --nen: #0f1115; --the: #181b22; --vien: #2a2f3a; --chu: #e9ecf2; --mo: #9aa3b2; --troi: #6ebeff; --vang: #ffc83d; --do: #fe2c55; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--nen); color: var(--chu); font: 15px/1.5 'BVS', system-ui, sans-serif; }
+header { padding: 12px 20px; border-bottom: 1px solid var(--vien); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.logo { font: 22px 'Anton'; }
+.phu, .nho { color: var(--mo); font-size: 13px; }
+.ban { margin-left: auto; color: var(--mo); font-size: 12px; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; padding: 18px 20px 60px; max-width: 1200px; margin: auto; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
+.the { background: var(--the); border: 1px solid var(--vien); border-radius: 14px; padding: 14px 16px; margin: 14px 0; }
+#caiDat { max-width: 1200px; margin: 12px auto 0; }
+.an { display: none !important; }
+.an-nhe { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+h3 { margin: 0 0 8px; font: 16px 'BVX'; }
+.tha { position: relative; display: grid; place-items: center; min-height: 180px; border: 2px dashed var(--troi); border-radius: 16px; text-align: center; padding: 20px; cursor: pointer; background: #121722; }
+.tha.keo { background: #16233a; }
+.tha-chu b { font: 20px 'BVX'; }
+#dsFile { list-style: none; padding: 0; margin: 12px 0; }
+#dsFile li { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--vien); border-radius: 10px; margin-bottom: 6px; background: var(--the); }
+#dsFile li .ten { flex: 1; word-break: break-all; font-size: 14px; }
+#dsFile li .vai { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: #222838; color: var(--mo); white-space: nowrap; }
+#dsFile li .vai.loi { color: var(--vang); } #dsFile li .vai.giong { color: var(--troi); }
+#dsFile button { padding: 2px 8px; }
+input, select, textarea, button { font: inherit; color: var(--chu); background: #10131a; border: 1px solid var(--vien); border-radius: 8px; padding: 7px 10px; }
+textarea { width: 100%; resize: vertical; }
+button { cursor: pointer; background: #222838; }
+button:hover { border-color: var(--troi); }
+button:disabled { opacity: .5; cursor: default; }
+button.chinh { background: var(--do); border-color: var(--do); font-family: 'BVX'; padding: 10px 22px; }
+button.phu-btn { background: transparent; }
+label.radio { display: inline-flex; gap: 6px; align-items: center; margin-right: 18px; }
+.nut-nho { position: relative; display: inline-block; padding: 6px 12px; border: 1px dashed var(--vien); border-radius: 8px; cursor: pointer; }
+.hang { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.mau-cau { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.mau-cau span { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: #222838; color: var(--mo); cursor: pointer; }
+.mau-cau span:hover { color: var(--chu); }
+.cot-phai { position: sticky; top: 12px; align-self: start; }
+.khung-xem { position: relative; width: 100%; max-width: 360px; margin: auto; aspect-ratio: 9/16; background: #000; border-radius: 14px; overflow: hidden; }
+#xem { width: 100%; height: 100%; display: block; }
+#veChe { position: absolute; inset: 0; width: 100%; height: 100%; display: none; cursor: crosshair; }
+#veChe.bat { display: block; }
+.trong { position: absolute; inset: 0; display: grid; place-items: center; color: var(--mo); }
+.tien { height: 8px; background: #10131a; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+#thanh { height: 100%; width: 0; background: linear-gradient(90deg, var(--troi), var(--vang)); transition: width .2s; }
+.goi-y { background: #10131a; border: 1px dashed var(--vien); border-radius: 8px; padding: 8px 10px; font-size: 13px; white-space: pre-wrap; cursor: pointer; margin-top: 8px; }
+#lichSu { padding-left: 22px; margin: 0; }
+#lichSu li { margin: 4px 0; font-size: 13px; }
+#lichSu li button { padding: 2px 8px; font-size: 12px; margin-left: 6px; }
+#lichSu li.dang { color: var(--vang); }
+.loi { color: var(--do); } .ok { color: #5fd38a; }
+.ban-moi { background: var(--vang); color: #111; padding: 8px 20px; font-family: 'BVX'; }
+.ban-moi button { margin-left: 10px; background: #111; color: #fff; border: 0; }

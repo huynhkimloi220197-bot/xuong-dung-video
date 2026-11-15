@@ -22,36 +22,39 @@ export function dbKhung(x) {
 }
 const phanVi = (e, p) => { const s = Array.from(e).sort((a, b) => a - b); return s[Math.floor(p * (s.length - 1))]; };
 
-// Trả { x: mẫu đã cắt, doan: [[t0,t1],...] các đoạn có tiếng (giây, trên mẫu mới) }
-// - cắt đầu/cuối tại im lặng thật (không cụt chữ), chừa đệm
-// - khoảng lặng giữa câu > nen_lang_toi_da thì rút còn nen_lang_con (nhịp gọn, không đổi giọng)
-export function catLang(x, { nenGiua = true } = {}) {
-  const e = dbKhung(x); if (!e.length) return { x, doan: [] };
-  const nguong = phanVi(e, 0.1) + CHUAN.am.lang_db, coTieng = Array.from(e, v => v > nguong);
-  let dau = coTieng.indexOf(true), cuoi = coTieng.lastIndexOf(true);
-  if (dau < 0) return { x: x.slice(0, 1), doan: [] };
-  dau = Math.max(0, dau - 4); cuoi = Math.min(e.length - 1, cuoi + 4);   // đệm 80ms, phần đuôi tắt dần không bị cụt
-  // gom các đoạn có tiếng
-  const doanGoc = []; let i = dau;
-  while (i <= cuoi) {
-    while (i <= cuoi && !coTieng[i]) i++; if (i > cuoi) break; const a = i;
-    while (i <= cuoi && (coTieng[i] || (i + 1 <= cuoi && coTieng[i + 1]))) i++; doanGoc.push([a, i]);
-  }
-  const m = Math.floor(KH * SR), parts = [], doan = []; let t = 0;
-  const lay = (k0, k1) => { const s = x.subarray(k0 * m, k1 * m); parts.push(s); return s.length / SR; };
-  let truoc = dau;
-  doanGoc.forEach(([a, b], j) => {
-    const lang = (a - truoc) * KH;
-    if (j === 0) t += lay(dau, a);
-    else if (nenGiua && lang > CHUAN.am.nen_lang_toi_da) { const giu = Math.round(CHUAN.am.nen_lang_con / KH / 2); t += lay(truoc, truoc + giu); t += lay(a - giu, a); }
-    else t += lay(truoc, a);
-    const t0 = t; t += lay(a, b); doan.push([t0, t]); truoc = b;
+// Tìm các đoạn GIỮ (giây, trên file gốc): cắt đầu/cuối tại im lặng thật (không cụt chữ),
+// khoảng lặng giữa câu > nen_lang_toi_da thì rút còn nen_lang_con. tu,den = vùng xét (giây).
+export function timGiu(x, { tu = 0, den = null, nenGiua = true, langToiDa = CHUAN.am.nen_lang_toi_da, langCon = CHUAN.am.nen_lang_con } = {}) {
+  const e = dbKhung(x), k0 = Math.floor(tu / KH), k1 = Math.min(e.length, den == null ? e.length : Math.floor(den / KH));
+  if (k1 - k0 < 3) return [];
+  const nguong = phanVi(e, 0.1) + CHUAN.am.lang_db, co = i => e[i] > nguong;
+  let dau = k0; while (dau < k1 && !co(dau)) dau++; let cuoi = k1 - 1; while (cuoi > dau && !co(cuoi)) cuoi--;
+  if (dau >= k1) return [];
+  dau = Math.max(k0, dau - 4); cuoi = Math.min(k1 - 1, cuoi + 4);          // đệm 80ms: đuôi chữ tắt dần không bị cụt
+  const seg = []; let i = dau;   // các cụm có tiếng (cho phép hở 1 khung)
+  while (i <= cuoi) { while (i <= cuoi && !co(i)) i++; if (i > cuoi) break; const a = i; while (i <= cuoi && (co(i) || (i + 1 <= cuoi && co(i + 1)))) i++; seg.push([a, i]); }
+  const out = [];
+  seg.forEach(([a, b], j) => {
+    if (j === 0) { out.push([dau, b]); return; }
+    const hở = a - out.at(-1)[1];
+    if (nenGiua && hở * KH > langToiDa) { const g = Math.round(langCon / KH / 2); out.at(-1)[1] += g; out.push([a - g, b]); }
+    else out.at(-1)[1] = b;
   });
-  t += lay(truoc, cuoi + 1);
-  const tong = parts.reduce((s, p) => s + p.length, 0), y = new Float32Array(tong); let o = 0;
-  for (const p of parts) { y.set(p, o); o += p.length; }
-  const f = Math.floor(0.012 * SR); for (let k = 0; k < f && k < y.length; k++) { y[k] *= k / f; y[y.length - 1 - k] *= k / f; }
-  return { x: y, doan };
+  out.at(-1)[1] = cuoi + 1;
+  return out.map(([p, q]) => [p * KH, q * KH]);
+}
+// ghép các đoạn giữ thành 1 mảng mẫu (mềm mép 12ms) + hàm đổi giờ gốc → giờ mới
+export function ghep(x, giu) {
+  const parts = giu.map(([a, b]) => x.subarray(Math.floor(a * SR), Math.floor(b * SR)));
+  const n = parts.reduce((s, p) => s + p.length, 0), y = new Float32Array(n); let o = 0; const f = Math.floor(0.012 * SR);
+  for (const p of parts) { y.set(p, o); for (let k = 0; k < f && k < p.length; k++) { y[o + k] *= k / f; y[o + p.length - 1 - k] *= k / f; } o += p.length; }
+  return { x: y, doi: t => { let acc = 0; for (const [a, b] of giu) { if (t < a) return acc; if (t <= b) return acc + t - a; acc += b - a; } return acc; } };
+}
+// tương thích bản cũ
+export function catLang(x, o = {}) {
+  const giu = timGiu(x, o); if (!giu.length) return { x: x.slice(0, 1), doan: [] };
+  const g = ghep(x, giu); let t = 0; const doan = giu.map(([a, b]) => { const r = [t, t + b - a]; t += b - a; return r; });
+  return { x: g.x, doan, giu, doi: g.doi };
 }
 
 // cân giọng về −20 dBFS (đo trên phần có tiếng)
