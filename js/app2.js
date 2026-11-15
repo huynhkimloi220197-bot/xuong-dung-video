@@ -1,13 +1,13 @@
 // Xưởng Dựng Video v0.2 — thả video thô, máy tự edit; sửa bằng góp ý gõ chữ; lịch sử bản.
 import { phanTich, lapKeHoach, xuat, anhBia } from './tudong.js';
 import { hieuGopY, MAU_CAU } from './gopy.js';
-import { docAm, db } from './audio.js';
+import { docAm, db, timNhip } from './audio.js';
 import { datMoHinh } from './nghe.js';
-const PHIEN_BAN = '0.3.0';
+const PHIEN_BAN = '0.3.1';
 const $ = s => document.querySelector(s);
 $('#ban').textContent = 'Phiên bản ' + PHIEN_BAN;
 
-let files = [], kq = new Map(), gop = {}, ban = [], dangXem = -1, nhac = null, huy = { co: false }, banDang = null;
+let nhip = null, files = [], kq = new Map(), gop = {}, ban = [], dangXem = -1, nhac = null, huy = { co: false }, banDang = null;
 const tienDo = (m, k) => { $('#tienChu').textContent = m; if (k != null) $('#thanh').style.width = (k * 100).toFixed(1) + '%'; };
 const tuNhien = (a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true });
 
@@ -25,7 +25,7 @@ const tha = $('#tha');
 ['dragleave', 'drop'].forEach(e => tha.addEventListener(e, ev => { ev.preventDefault(); tha.classList.remove('keo'); }));
 tha.addEventListener('drop', ev => them([...ev.dataTransfer.files]));
 $('#chonFile').onchange = e => { them([...e.target.files]); e.target.value = ''; };
-$('#nhac').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('#tenNhac').textContent = 'Đang đọc ' + f.name + '…'; nhac = await docAm(f); $('#tenNhac').textContent = '🎵 ' + f.name; };
+$('#nhac').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('#tenNhac').textContent = 'Đang đọc ' + f.name + '…'; nhac = await docAm(f); nhip = timNhip(nhac); $('#tenNhac').textContent = '🎵 ' + f.name + (nhip ? ` · ${nhip.bpm} BPM — cắt cảnh theo nhịp` : ''); };
 
 function them(ds) {
   ds = ds.filter(f => /^(video|audio)\//.test(f.type) || /\.(mp4|mov|m4v|mp3|wav|m4a|aac)$/i.test(f.name)).sort(tuNhien);
@@ -66,12 +66,13 @@ async function dung(ghiChu) {
   try {
     const ds = files.map(f => kq.get(f)).filter(Boolean); if (!ds.length) return;
     await document.fonts.load("40px 'Anton'"); await document.fonts.load("800 40px 'BVX'");
-    const kh = lapKeHoach(ds, { gop }); kh.mau = gop.mau || 1;
+    const kh = lapKeHoach(ds, { gop, nhip: nhac && gop.nhac !== 0 ? nhip : null }); kh.mau = gop.mau || 1;
     const t0 = performance.now();
     const blob = await xuat(kh, { nhac: nhacDung(), cao: $('#cdCao').checked, bao: tienDo, huy });
     ban.push({ so: ban.length + 1, ghiChu, gop: structuredClone(gop), kh, blob, url: URL.createObjectURL(blob), luc: new Date() });
     xemBan(ban.length - 1);
     tienDo(`Xong ${kh.tong.toFixed(1)} giây video · dựng mất ${((performance.now() - t0) / 1000).toFixed(0)} giây`, 1);
+    if (kh.khongLoi && !kh.hook) $('#phanHoi').innerHTML = '<span class="ok">Clip không có lời nói nên máy chưa biết ghi chữ gì. Gõ thử: hook là "MÀN HÌNH ĐẸP CỠ NÀO?" / "OPPO FIND X9" · nhãn "THIẾT KẾ" ở giây 6</span>';
     $('#khuGopY').classList.remove('an'); $('#khuLichSu').classList.remove('an'); $('#taiVe').classList.remove('an');
   } catch (e) { tienDo('Lỗi: ' + e.message); console.error(e); }
   finally { banDang = false; $('#dung').disabled = false; $('#sua').disabled = false; }

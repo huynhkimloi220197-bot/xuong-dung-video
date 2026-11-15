@@ -4,6 +4,7 @@ import { Input, BlobSource, ALL_FORMATS, CanvasSink, AudioBufferSink, Output, Mp
 import { CHUAN } from './config.js';
 import * as E from './effects.js';
 import { docAm, timGiu, ghep, canGiong, tronAm, sfx, db, SR, dbKhung } from './audio.js';
+import { timMay } from './daodien.js';
 import { nghe, gomCum } from './nghe.js';
 import { daoDien } from './daodien.js';
 import { veHieu, TIENG } from './hieuung.js';
@@ -23,13 +24,14 @@ export async function phanTich(file, bao = () => {}, { phuDe = true } = {}) {
     // độ sáng theo thời gian (bỏ đoạn tối đầu/cuối) + thông số chỉnh màu
     const nho = new CanvasSink(track, { width: 36, height: 64, fit: 'cover' }), ts = [];
     for (let t = 0; t < r.dur; t += 0.25) ts.push(t);
-    const sang = []; let tong = 0, n = 0;
+    const sang = [], dong = []; let tong = 0, n = 0, truoc = null;
     for await (const w of nho.canvasesAtTimestamps(ts)) {
-      if (!w) { sang.push(0); continue; }
-      const d = w.canvas.getContext('2d').getImageData(0, 0, 36, 64).data; let s = 0;
-      for (let i = 0; i < d.length; i += 4) s += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      const m = s / (d.length / 4); sang.push(m); tong += m; n++;
+      if (!w) { sang.push(0); dong.push(99); continue; }
+      const d = w.canvas.getContext('2d').getImageData(0, 0, 36, 64).data, y = new Float32Array(d.length / 4); let s = 0, dd = 0;
+      for (let i = 0; i < y.length; i++) { y[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]; s += y[i]; if (truoc) dd += Math.abs(y[i] - truoc[i]); }
+      const m = s / y.length; sang.push(m); dong.push(truoc ? dd / y.length : 0); truoc = y; tong += m; n++;
     }
+    r.dong = dong;   // độ rung/lia giữa 2 mẫu cách 0.25s — cao = máy đang lia, hình nhoè
     let a = 0; while (a < sang.length - 1 && sang[a] < 28) a++; let b = sang.length - 1; while (b > a && sang[b] < 28) b--;
     r.sangTu = a * 0.25; r.sangDen = Math.min(r.dur, (b + 1) * 0.25); r.sang = sang;
     const tb = tong / Math.max(1, n); r.mau = { sang: Math.min(1.25, Math.max(0.9, 118 / Math.max(40, tb))), tuong: 1.06, bao: 1.12 };
@@ -59,6 +61,18 @@ async function docAmLuong(file) {
   return x;
 }
 
+// chọn đoạn dài d đẹp nhất trong clip: ít rung/lia nhất, đủ sáng
+function doanDep(r, d) {
+  const dg = r.dong, sg = r.sang; if (!dg?.length) return r.sangTu;
+  let tot = r.sangTu, min = Infinity;
+  for (let a = r.sangTu; a + d <= r.sangDen + 1e-6; a += 0.25) {
+    const i0 = Math.round(a / 0.25), i1 = Math.max(i0 + 1, Math.round((a + d) / 0.25)); let c = 0;
+    for (let i = i0 + 1; i < i1 && i < dg.length; i++) c += dg[i] + (sg[i] < 40 ? 20 : 0);
+    c = c / (i1 - i0) + 0.02 * a;                      // hơi ưu tiên phần đầu khi ngang nhau
+    if (c < min) { min = c; tot = a; }
+  }
+  return tot;
+}
 // ---------- lập kế hoạch ----------
 // cd: { gop: kết quả góp ý (đã gộp), phuDe: bool }
 const KIEU = ['quet_sang', 'zoom', 'truot', 'chop_mat', 'loe'];
@@ -89,9 +103,14 @@ export function lapKeHoach(ds, cd) {
       });
       themChu(r.chu, gh.doi, t); t += D; daDung.add(r);
     } else if (!r.laAm) {                            // clip không lời đứng riêng: dựng nhanh, tối đa 3 giây/clip, giữ tiếng nền nhỏ
-      const dung = r.sangDen - r.sangTu, d = Math.min(3 / nhanh, dung);
-      doan.push({ r, a: r.sangTu, b: r.sangTu + d, toc: 1, t0: t, dai: d, zoom: 1, chuyen: doan.length ? KIEU[so++ % KIEU.length] : null, nen: true });
-      if (r.am) am.push({ x: r.am.subarray(Math.floor(r.sangTu * SR), Math.floor((r.sangTu + d) * SR)), t, gain: db(-14) });
+      const dung = r.sangDen - r.sangTu; let d = Math.min(3 / nhanh, dung);
+      const nh = cd.nhip; if (nh && nh.nhip > 0.25) {          // có nhạc: điểm cắt rơi đúng phách
+        const b = nh.nhip * (nh.nhip < 0.42 ? 2 : 1), ket = nh.pha + Math.round((t + d - nh.pha) / b) * b;
+        d = Math.min(dung, Math.max(b, ket - t)); if (t + d > ket + 0.01 && ket - t >= b) d = ket - t;
+      }
+      const a = doanDep(r, d);
+      doan.push({ r, a, b: a + d, toc: 1, t0: t, dai: d, zoom: 1, chuyen: doan.length ? KIEU[so++ % KIEU.length] : null, nen: true });
+      if (r.am) am.push({ x: r.am.subarray(Math.floor(a * SR), Math.floor((a + d) * SR)), t, gain: db(-14) });
       t += d; daDung.add(r);
     }
   }
@@ -110,6 +129,9 @@ export function lapKeHoach(ds, cd) {
   kh.zoomVao = [...kh.zoomVao, ...hieu.filter(h => h.loai === 'zoom').map(h => ({ t: h.t }))];
   kh.hieu = hieu.filter(h => h.loai !== 'hook' && h.loai !== 'zoom').sort((a, b) => a.t - b.t);
   kh.loi = kh.chu; if (g.phuDe === false) kh.chu = [];
+  // clip không lời: lấy tên máy từ tên file làm thẻ mở đầu (vd "find x9 man hinh.mp4")
+  kh.khongLoi = !kh.loi.length;
+  if (kh.khongLoi && !kh.hook && !('hook' in g) && !g.tatDaoDien) { const may = timMay(ds.map(r => r.ten.replace(/[_\-.]+/g, ' ')).join(' ')); if (may.length) kh.hook = { nho: may[1] || '', lon: `${may[0]} CÓ GÌ HAY?`, dai: 2.5, tuDong: true }; }
   kh.cum = gomCum(kh.chu); return kh;
 }
 function boDoan(kh, a, b) {

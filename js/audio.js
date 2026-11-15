@@ -86,3 +86,20 @@ export async function sfx(ten) {
   return _sfx[ten];
 }
 export const db = d => 10 ** (d / 20);
+
+// NHỊP NHẠC: tìm BPM + pha phách đầu (nhạc được trộn từ giây 0 nên phách nhạc = phách video)
+export function timNhip(x) {
+  const hop = 512, n = Math.min(Math.floor(x.length / hop) - 1, Math.floor(60 * SR / hop)); if (n < 200) return null;
+  const e = new Float32Array(n); let truoc = 0;
+  for (let i = 0; i < n; i++) { let s = 0; for (let j = i * hop; j < i * hop + 1024 && j < x.length; j++) s += x[j] * x[j]; const l = Math.log(1e-6 + s); e[i] = Math.max(0, l - truoc); truoc = l; }
+  const fps = SR / hop; let tot = 0, P = 0;
+  for (let bpm = 70; bpm <= 180; bpm += 0.5) {
+    const lag = fps * 60 / bpm, li = Math.floor(lag), f = lag - li; let s = 0;
+    for (let i = 0; i + li + 1 < n; i++) s += e[i] * (e[i + li] * (1 - f) + e[i + li + 1] * f);
+    s *= Math.exp(-0.5 * (Math.log2(bpm / 120) / 0.9) ** 2);           // ưu tiên nhịp quanh 120
+    if (s > tot) { tot = s; P = lag; }
+  }
+  let pha = 0, best = -1;
+  for (let ph = 0; ph < P; ph++) { let s = 0; for (let k = ph; k < n; k += P) s += e[Math.round(k)] || 0; if (s > best) { best = s; pha = ph; } }
+  return { nhip: P / fps, pha: pha / fps, bpm: Math.round(60 * fps / P) };
+}
