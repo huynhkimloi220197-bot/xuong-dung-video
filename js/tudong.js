@@ -42,7 +42,7 @@ export async function phanTich(file, bao = () => {}, { phuDe = true } = {}) {
     const ti = e.filter(v => v > ng).length / e.length, max = s.at(-1);
     r.coLoi = (laAm || ti > 0.25) && max > -45; r.am = am;
   } else r.coLoi = false;
-  if (r.coLoi && phuDe) { try { r.chu = await nghe(am, bao); } catch (e) { console.warn('nghe lỗi', e); r.chu = []; r.loiNghe = e.message; } }
+  if (r.coLoi && phuDe) { try { r.chu = await nghe(am, bao, k); } catch (e) { console.warn('nghe lỗi', e); r.chu = []; r.loiNghe = e.message; } }
   _cache.set(k, r); return r;
 }
 
@@ -132,9 +132,27 @@ export function lapKeHoach(ds, cd) {
   // clip không lời: lấy tên máy từ tên file làm thẻ mở đầu (vd "find x9 man hinh.mp4")
   kh.khongLoi = !kh.loi.length;
   if (kh.khongLoi && !kh.hook && !('hook' in g) && !g.tatDaoDien) { const may = timMay(ds.map(r => r.ten.replace(/[_\-.]+/g, ' ')).join(' ')); if (may.length) kh.hook = { nho: may[1] || '', lon: `${may[0]} CÓ GÌ HAY?`, dai: 2.5, tuDong: true }; }
+  // THAO TÁC TAY trên bảng dựng (ghi lại để dựng lại vẫn giữ): cắt đoạn, chữ/hiệu ứng, phụ đề sửa tay, chuyển cảnh
+  const tay = g.tay;
+  if (tay) {
+    for (const [a, b] of tay.bo || []) boDoan(kh, a, b);
+    if (tay.hieu) kh.hieu = structuredClone(tay.hieu);
+    if (tay.zoom) kh.zoomVao = structuredClone(tay.zoom);
+    if (tay.chen) kh.chen = structuredClone(tay.chen);
+    if (tay.che) kh.che = structuredClone(tay.che);
+    if ('hook' in tay) kh.hook = tay.hook ? { ...tay.hook } : null;
+    for (const c of tay.cum || []) suaCum(kh, c);
+    for (const [i, k] of Object.entries(tay.chuyen || {})) if (kh.doan[i]) kh.doan[i].chuyen = k || null;
+  }
   kh.cum = gomCum(kh.chu); return kh;
 }
-function boDoan(kh, a, b) {
+// thay chữ của 1 cụm phụ đề [t0,t1) bằng câu mới (chia đều thời gian)
+const NHAN_TU = /^(OPPO|Find|X\d+|Reno\d*|ColorOS|\d+[\d.,]*%?|AI|5G)$/i;
+export function suaCum(kh, { t0, t1, chu }) {
+  const giu = kh.chu.filter(w => w.us < t0 - 0.01 || w.us >= t1 - 0.01), tu = (chu || '').trim().split(/\s+/).filter(Boolean), d = (t1 - t0) / Math.max(1, tu.length);
+  kh.chu = [...giu, ...tu.map((w, i) => ({ chu: w, us: t0 + i * d, ue: t0 + (i + 1) * d - 0.02, nhan: NHAN_TU.test(w.replace(/[,.?!]/g, '')) }))].sort((a, b) => a.us - b.us);
+}
+export function boDoan(kh, a, b) {
   a = Math.max(0, a); b = Math.min(kh.tong, b); if (b <= a) return; const d = b - a;
   const moi = [];
   for (const s of kh.doan) {
@@ -153,7 +171,10 @@ function boDoan(kh, a, b) {
     y.set(tr.x.subarray(0, i0)); y.set(tr.x.subarray(i1), i0); return { ...tr, x: y, t: Math.min(s, a) };
   });
   kh.chu = kh.chu.filter(w => w.us < a || w.us >= b).map(w => w.us >= b ? { ...w, us: w.us - d, ue: w.ue - d } : w);
-  kh.chen = kh.chen.map(c => c.t >= b ? { ...c, t: c.t - d } : c); kh.tong -= d;
+  const doi = x => x.t >= b ? { ...x, t: x.t - d } : x.t >= a ? { ...x, t: a } : x;
+  kh.chen = kh.chen.filter(c => !(c.t >= a && c.t + (c.dai || 2.5) <= b)).map(doi);
+  if (kh.hieu) kh.hieu = kh.hieu.filter(h => !(h.t >= a && h.t + h.dai <= b)).map(h => h.t < a && h.t + h.dai > a ? { ...h, dai: Math.max(0.5, h.dai - Math.min(d, h.t + h.dai - a)) } : doi(h));
+  kh.zoomVao = (kh.zoomVao || []).filter(z => z.t < a || z.t >= b).map(doi); kh.tong -= d;
 }
 
 // ---------- vẽ 1 khung ----------
@@ -185,14 +206,14 @@ export function veKhung(ctx, kh, s, u, src, truocAnh, anhChia) {
 function ctxPhuDe(ctx, cum, t, co) { if (!cum) return; ctx.save(); if (co !== 1) { ctx.translate(W / 2, CHUAN.an_toan.y_phu_de); ctx.scale(co, co); ctx.translate(-W / 2, -CHUAN.an_toan.y_phu_de); } E.phuDe(ctx, cum, t); ctx.restore(); }
 
 // xem nhanh 1 khung ở giây t của video
-export async function xemKhung(ctx, kh, t) {
+export async function xemKhung(ctx, kh, t, anhChia) {
   const s = kh.doan.find(s => t >= s.t0 && t < s.t0 + s.dai) || kh.doan.at(-1); if (!s) return;
   const u = t - s.t0, w = await s.r.sink.getCanvas(Math.min(s.r.dur - 0.05, s.a + u * s.toc));
-  ctx.clearRect(0, 0, W, H); veKhung(ctx, kh, s, u, w?.canvas || null, null);
+  ctx.clearRect(0, 0, W, H); veKhung(ctx, kh, s, u, w?.canvas || null, null, anhChia);
 }
 
 // chia đôi: lấy 1 khung của clip KHÁC (clip trước đó, không có thì clip sau) để đặt nửa trên
-async function layAnhChia(kh) {
+export async function layAnhChia(kh) {
   const m = new Map();
   for (const h of (kh.hieu || []).filter(h => h.loai === 'chia_doi')) {
     const i = kh.doan.findIndex(s => h.t >= s.t0 && h.t < s.t0 + s.dai); if (i < 0) continue;

@@ -39,9 +39,15 @@ export const suaChu = t => SUA.reduce((s, [a, b]) => s.replace(a, b), t).replace
 const NHAN = /^(OPPO|Find|X\d+|Reno\d*|ColorOS|\d+[\d.,]*%?|AI|Flux|5G|[A-Z]\d+)$/i;
 
 // x: mono 48k. Trả danh sách chữ [{chu, us, ue, nhan}] theo giây trên x
-export async function nghe(x, bao = () => {}) {
+// nhớ kết quả nghe trên máy (IndexedDB): mở lại trang không phải nghe lại
+const _db = () => new Promise((ok, loi) => { const q = indexedDB.open('xuong_dung', 1); q.onupgradeneeded = () => q.result.createObjectStore('nghe'); q.onsuccess = () => ok(q.result); q.onerror = () => loi(q.error); });
+async function nhoLay(k) { try { const d = await _db(); return await new Promise(ok => { const q = d.transaction('nghe').objectStore('nghe').get(k); q.onsuccess = () => ok(q.result); q.onerror = () => ok(null); }); } catch { return null; } }
+async function nhoGhi(k, v) { try { const d = await _db(); d.transaction('nghe', 'readwrite').objectStore('nghe').put(v, k); } catch { } }
+export async function nghe(x, bao = () => {}, khoa = null) {
   if (x.length < SR * 0.4) return [];
-  _bao = bao; const chunks = await goiNghe(ha16(x));
+  _bao = bao; const kk = khoa && `${khoa}|${MO_HINH}`;
+  let chunks = kk ? await nhoLay(kk) : null;
+  if (chunks) bao('Đã nhớ phụ đề từ lần trước'); else { chunks = await goiNghe(ha16(x)); if (kk) nhoGhi(kk, chunks); }
   const dur = x.length / SR, ws = [];
   for (const c of chunks) {
     const txt = suaChu(c.text || ''); if (!txt) continue;
